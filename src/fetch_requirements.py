@@ -129,22 +129,13 @@ class Identity:
 
             try:
                 define = data["require"][0][3][0]["__bbox"]["define"]
-                identity = None
-                for i in range(len(define)):
-                    if len(define[i]) < 3:
-                        continue
-                    if "raw" in define[i][2].keys():
-                        identity = define[i][2]["raw"]
-                        break
+                for definition in define:
+                    if definition[0] == "InstagramSecurityConfig":
+                        self.__csrf_token = definition[2]["csrf_token"]
+                        return data
             except:
                 continue
 
-            try:
-                identity = json.loads(identity)
-                self.__csrf_token = identity["config"]["csrf_token"]
-                return data
-            except json.decoder.JSONDecodeError:
-                continue
         raise Exception("Unable to find the identity script")
 
     def __get_asbd_id(self) -> str:
@@ -154,10 +145,14 @@ class Identity:
         for u in urls_list:
             s = requests.get(u)
             s.raise_for_status()
-            doc_ids = profile_posts_actions.findall(s.text)
 
-            if len(doc_ids) > 0:
-                self.__doc_ids[doc_ids[0]].extend([i for m in doc_ids[1:] for i in m if i != ''])
+            doc_id_sets = profile_posts_actions.findall(s.text)
+            for doc_ids in doc_id_sets:
+                doc_key = doc_ids[0]
+                if doc_key not in self.__doc_ids:
+                    self.__doc_ids[doc_key] = []
+                self.__doc_ids[doc_key] += doc_ids[1:]
+
             try:
                 asbd_id = self.__asbd_id_regex.findall(s.text)[0]
             except IndexError:
